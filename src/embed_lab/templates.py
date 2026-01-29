@@ -379,11 +379,14 @@ if __name__ == "__main__":
 
 TEMPLATE_MAIN: Final[str] = """\
 def main() -> None:
-    print("Run the baseline experiment with: python experiments/exp_01_baseline.py")
+    print(
+        "Run the baseline experiment with: uv run experiments/exp_01_baseline.py"
+    )
 
 
 if __name__ == "__main__":
     main()
+
 """
 
 TEMPLATE_GITIGNORE: Final[str] = """\

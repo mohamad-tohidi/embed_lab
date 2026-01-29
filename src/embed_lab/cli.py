@@ -17,12 +17,14 @@ def init(
     ] = Path("."),
 ) -> None:
     base_path: Path = path.resolve()
+    base_path.mkdir(parents=True, exist_ok=True)
 
     structure: dict[Path, str | None] = {
         # Directories
         base_path / "inventory": None,
         base_path / "experiments": None,
         base_path / "results": None,
+        base_path / "data": None,
         # Inventory
         base_path / "inventory" / "__init__.py": "",
         base_path
@@ -34,11 +36,27 @@ def init(
         base_path
         / "inventory"
         / "train.py": templates.TEMPLATE_TRAIN,
+        base_path
+        / "inventory"
+        / "evaluate.py": templates.TEMPLATE_EVALUATE,
+        base_path
+        / "inventory"
+        / "plotting.py": templates.TEMPLATE_PLOTTING,
         # Experiments
         base_path / "experiments" / "__init__.py": "",
         base_path
         / "experiments"
         / "exp_01_baseline.py": templates.TEMPLATE_EXP_01_BASELINE,
+        # Data
+        base_path
+        / "data"
+        / "train.jsonl": templates.TEMPLATE_DATA_TRAIN_JSONL,
+        base_path
+        / "data"
+        / "dev.jsonl": templates.TEMPLATE_DATA_DEV_JSONL,
+        base_path
+        / "data"
+        / "gold.jsonl": templates.TEMPLATE_DATA_GOLD_JSONL,
         # Misc
         base_path / "results" / ".gitkeep": "",
         base_path
@@ -65,9 +83,7 @@ def init(
             )
             continue
 
-        file_path.write_text(
-            content, encoding="utf-8"
-        )  # pathlib.Path.write_text creates/writes text files. [web:32]
+        file_path.write_text(content, encoding="utf-8")
         typer.secho(
             f"  + Created {file_path.relative_to(base_path)}",
             fg=typer.colors.GREEN,
