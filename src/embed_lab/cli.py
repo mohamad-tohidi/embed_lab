@@ -2,17 +2,45 @@ import typer
 from pathlib import Path
 from typing import Annotated
 from importlib import resources
+from importlib.abc import Traversable
 
-from embed_lab import templates
+
+import template
 
 app = typer.Typer(name="emb", add_completion=True)
 
 
-def get_template(filename: str) -> str:
-    """Reads a template file from the package resources."""
-    return (
-        resources.files(templates) / filename
-    ).read_text(encoding="utf-8")
+def copy_recursive(
+    source: Traversable, dest: Path, base_path: Path
+) -> None:
+    """
+    Recursively copies files from a Traversable (package resource) to a destination Path.
+    """
+    for item in source.iterdir():
+        # Skip package internals and cache
+        if item.name in ["__pycache__", "__init__.py"]:
+            continue
+
+        target_path = dest / item.name
+
+        if item.is_dir():
+            target_path.mkdir(parents=True, exist_ok=True)
+            copy_recursive(item, target_path, base_path)
+        elif item.is_file():
+            # Check if exists to skip
+            if target_path.exists():
+                typer.secho(
+                    f"  . Skipped {target_path.relative_to(base_path)} (exists)",
+                    fg=typer.colors.YELLOW,
+                )
+                continue
+
+            # Copy content
+            target_path.write_bytes(item.read_bytes())
+            typer.secho(
+                f"  + Created {target_path.relative_to(base_path)}",
+                fg=typer.colors.GREEN,
+            )
 
 
 @app.command()
@@ -27,77 +55,16 @@ def init(
     base_path: Path = path.resolve()
     base_path.mkdir(parents=True, exist_ok=True)
 
-    structure: dict[Path, str | None] = {
-        # Directories
-        base_path / "inventory": None,
-        base_path / "experiments": None,
-        base_path / "results": None,
-        base_path / "data": None,
-        # Inventory
-        base_path / "inventory" / "__init__.py": "",
-        base_path
-        / "inventory"
-        / "datasets.py": templates.TEMPLATE_DATASETS,
-        base_path
-        / "inventory"
-        / "preprocess.py": templates.TEMPLATE_PREPROCESS,
-        base_path
-        / "inventory"
-        / "train.py": templates.TEMPLATE_TRAIN,
-        base_path
-        / "inventory"
-        / "evaluate.py": templates.TEMPLATE_EVALUATE,
-        base_path
-        / "inventory"
-        / "plotting.py": templates.TEMPLATE_PLOTTING,
-        # Experiments
-        base_path / "experiments" / "__init__.py": "",
-        base_path
-        / "experiments"
-        / "exp_01_baseline.py": templates.TEMPLATE_EXP_01_BASELINE,
-        # Data
-        base_path
-        / "data"
-        / "train.jsonl": templates.TEMPLATE_DATA_TRAIN_JSONL,
-        base_path
-        / "data"
-        / "dev.jsonl": templates.TEMPLATE_DATA_DEV_JSONL,
-        base_path
-        / "data"
-        / "gold.jsonl": templates.TEMPLATE_DATA_GOLD_JSONL,
-        # Misc
-        base_path / "results" / ".gitkeep": "",
-        base_path
-        / ".gitignore": templates.TEMPLATE_GITIGNORE,
-        base_path / "main.py": templates.TEMPLATE_MAIN,
-        base_path
-        / "README.md": templates.TEMPLATE_README_MD,
-    }
-
     typer.secho(
         f"🧪 Initializing Embed Lab in {base_path.name}...",
         fg=typer.colors.BLUE,
     )
 
-    for file_path, content in structure.items():
-        if content is None:
-            file_path.mkdir(parents=True, exist_ok=True)
-            continue
+    # Get the root Traversable object for the template package [cite:web:1]
+    template_root = resources.files(template)
 
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-
-        if file_path.exists():
-            typer.secho(
-                f"  . Skipped {file_path.relative_to(base_path)} (exists)",
-                fg=typer.colors.YELLOW,
-            )
-            continue
-
-        file_path.write_text(content, encoding="utf-8")
-        typer.secho(
-            f"  + Created {file_path.relative_to(base_path)}",
-            fg=typer.colors.GREEN,
-        )
+    # Start the recursive copy
+    copy_recursive(template_root, base_path, base_path)
 
     typer.secho(
         "\n✨ Done! Try:", fg=typer.colors.BLUE, bold=True
@@ -106,4 +73,4 @@ def init(
 
 
 if __name__ == "__main__":
-    print(get_template("templates.py"))
+    app()

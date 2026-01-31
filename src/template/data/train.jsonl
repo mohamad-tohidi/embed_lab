@@ -1,0 +1,8 @@
+{"query":"how to reset my password","passage":"i forgot my password, how do i change it","label":1}
+{"query":"what is machine learning","passage":"explain machine learning in simple terms","label":1}
+{"query":"best way to cook rice","passage":"how do i cook rice properly","label":1}
+{"query":"python type annotations","passage":"how to use type hints in python","label":1}
+{"query":"how to reset my password","passage":"best way to cook rice","label":0}
+{"query":"python type annotations","passage":"i forgot my password, how do i change it","label":0}
+{"query":"what is machine learning","passage":"how do i cook rice properly","label":0}
+{"query":"best way to cook rice","passage":"explain machine learning in simple terms","label":0}
