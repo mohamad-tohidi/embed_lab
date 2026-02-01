@@ -4,15 +4,8 @@ from typing import Annotated
 from importlib import resources
 from importlib.abc import Traversable
 
-# from template import baseline
 
-TEMPLATES = {
-    "baseline": {
-        "name": "Baseline",
-        "description": "A minimal starting point with a single baseline experiment script. Perfect for quick prototyping.",
-        # "module": baseline,
-    },
-}
+import template
 
 app = typer.Typer(name="emb", add_completion=True)
 
@@ -63,75 +56,20 @@ def init(
     base_path.mkdir(parents=True, exist_ok=True)
 
     typer.secho(
-        f"🧪 Initializing Embed Lab in {base_path}...",
+        f"🧪 Initializing Embed Lab in {base_path.name}...",
         fg=typer.colors.BLUE,
-        bold=True,
     )
 
-    # Show template selection menu
-    options = list(TEMPLATES.keys())
-    typer.secho("\nPlease select a template:", bold=True)
+    # Get the root Traversable object for the template package [cite:web:1]
+    template_root = resources.files(template)
 
-    for i, key in enumerate(options, start=1):
-        tmpl = TEMPLATES[key]
-        typer.secho(
-            f"{i}. {tmpl['name']}",
-            fg=typer.colors.CYAN,
-            bold=True,
-        )
-        typer.echo(f"   {tmpl['description']}\n")
-
-    # Interactive selection with validation
-    while True:
-        try:
-            choice_input = typer.prompt(
-                "Enter the number of your chosen template",
-                default="1",
-            )
-            choice = int(choice_input)
-            if 1 <= choice <= len(options):
-                break
-            typer.secho(
-                f"Please enter a number between 1 and {len(options)}.",
-                fg=typer.colors.RED,
-            )
-        except ValueError:
-            typer.secho(
-                "Invalid input – please enter a number.",
-                fg=typer.colors.RED,
-            )
-
-    selected_key = options[choice - 1]
-    selected = TEMPLATES[selected_key]
-
-    typer.secho(
-        f"\nSelected template: {selected['name']}",
-        fg=typer.colors.GREEN,
-        bold=True,
-    )
-
-    # Get the root Traversable for the selected template
-    template_root = resources.files(selected["module"])
-
-    # Perform the copy
+    # Start the recursive copy
     copy_recursive(template_root, base_path, base_path)
 
     typer.secho(
-        "\n✨ Done! Your Embed Lab is initialized.",
-        fg=typer.colors.BLUE,
-        bold=True,
+        "\n✨ Done! Try:", fg=typer.colors.BLUE, bold=True
     )
-    typer.echo("\nNext steps:")
-    typer.echo("   • Explore the created files.")
-    typer.echo(
-        "   • Check the experiments/ directory for runnable scripts."
-    )
-    typer.echo(
-        "   • Example command: python experiments/exp_01_baseline.py"
-    )
-    typer.echo(
-        "     (Script names may vary depending on the chosen template.)"
-    )
+    typer.echo("   python experiments/exp_01_baseline.py")
 
 
 if __name__ == "__main__":
