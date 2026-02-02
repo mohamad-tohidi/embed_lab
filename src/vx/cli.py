@@ -7,7 +7,7 @@ from typing import Annotated, Iterable, Iterator
 
 import typer
 
-import template
+from ..template import IR_finetune
 
 EXCLUDES: frozenset[str] = frozenset({"__pycache__"})
 
@@ -101,7 +101,7 @@ def init(
         fg=typer.colors.BLUE,
     )
 
-    template_root = resources.files(template)
+    template_root = resources.files(IR_finetune)
     items = list(iter_template_files(template_root))
 
     typer.echo(f"This will process {len(items)} file(s).")
