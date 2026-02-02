@@ -22,4 +22,4 @@ module-name = "vx"
 
 
 [project.scripts]
-emb = "vx.cli:app"
+vx = "vx.cli:app"

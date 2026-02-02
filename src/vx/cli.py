@@ -1,75 +1,129 @@
-import typer
-from pathlib import Path
-from typing import Annotated
+from __future__ import annotations
+
 from importlib import resources
 from importlib.abc import Traversable
+from pathlib import Path
+from typing import Annotated, Iterable, Iterator
 
+import typer
 
 import template
 
-app = typer.Typer(name="vx", add_completion=True)
+EXCLUDES: frozenset[str] = frozenset(
+    {"__pycache__", "__init__.py"}
+)
 
 
-def copy_recursive(
-    source: Traversable, dest: Path, base_path: Path
-) -> None:
-    """
-    Recursively copies files from a Traversable (package resource) to a destination Path.
-    """
-    for item in source.iterdir():
-        # Skip package internals and cache
-        if item.name in ["__pycache__", "__init__.py"]:
+app = typer.Typer(
+    name="vx",
+    add_completion=True,
+    no_args_is_help=True,
+    help="Initialize an Embed Lab project from the bundled template.",
+    context_settings={
+        "help_option_names": ["-h", "--help"]
+    },
+)
+
+
+def iter_template_files(
+    root: Traversable,
+    prefix: Path = Path(),
+) -> Iterator[tuple[Traversable, Path]]:
+    for item in root.iterdir():
+        if item.name in EXCLUDES:
             continue
 
-        target_path = dest / item.name
-
+        rel = prefix / item.name
         if item.is_dir():
-            target_path.mkdir(parents=True, exist_ok=True)
-            copy_recursive(item, target_path, base_path)
+            yield from iter_template_files(item, rel)
         elif item.is_file():
-            # Check if exists to skip
-            if target_path.exists():
-                typer.secho(
-                    f"  . Skipped {target_path.relative_to(base_path)} (exists)",
-                    fg=typer.colors.YELLOW,
-                )
-                continue
+            yield item, rel
 
-            # Copy content
-            target_path.write_bytes(item.read_bytes())
+
+def ensure_dir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def copy_template_files(
+    items: Iterable[tuple[Traversable, Path]],
+    dest_root: Path,
+) -> tuple[int, int]:
+    written = 0
+    skipped = 0
+
+    for src, rel in items:
+        dst = dest_root / rel
+        ensure_dir(dst.parent)
+
+        if dst.exists():
+            skipped += 1
             typer.secho(
-                f"  + Created {target_path.relative_to(base_path)}",
-                fg=typer.colors.GREEN,
+                f"  . Skipped {rel} (exists)",
+                fg=typer.colors.YELLOW,
             )
+            continue
+
+        dst.write_bytes(src.read_bytes())
+
+        written += 1
+        verb = "Created"
+        typer.secho(
+            f"  + {verb} {rel}", fg=typer.colors.GREEN
+        )
+
+    return written, skipped
 
 
-@app.command()
+@app.command(
+    "init",
+    help="Create/refresh a directory from the bundled template.",
+)
 def init(
     path: Annotated[
         Path,
         typer.Argument(
-            help="Directory to initialize the lab in"
+            help="Target directory to initialize."
         ),
     ] = Path("."),
 ) -> None:
-    base_path: Path = path.resolve()
-    base_path.mkdir(parents=True, exist_ok=True)
+    """
+    Initialize an Embed Lab directory.
 
+    What happens:
+    - Copies the bundled `template` package contents into PATH.
+    - Skips existing files by default (use --overwrite to replace them).
+    - Excludes __pycache__ and __init__.py.
+    """
+    dest = path.expanduser().resolve()
+    ensure_dir(dest)
+
+    action = "Initializing"
     typer.secho(
-        f"🧪 Initializing Embed Lab in {base_path.name}...",
+        f"{action} Embed Lab in: {dest}",
         fg=typer.colors.BLUE,
     )
 
-    # Get the root Traversable object for the template package [cite:web:1]
     template_root = resources.files(template)
+    items = list(iter_template_files(template_root))
 
-    # Start the recursive copy
-    copy_recursive(template_root, base_path, base_path)
-
-    typer.secho(
-        "\n✨ Done! Try:", fg=typer.colors.BLUE, bold=True
+    typer.echo(f"This will process {len(items)} file(s).")
+    typer.echo(
+        "Existing files will be skipped unless --overwrite is set."
     )
-    typer.echo("   python experiments/exp_01_baseline.py")
+
+    written, skipped = copy_template_files(
+        items,
+        dest,
+    )
+
+    suffix = "written"
+    typer.secho(
+        f"\nDone. {written} file(s) {suffix}, {skipped} skipped.",
+        fg=typer.colors.BLUE,
+        bold=True,
+    )
+    typer.echo("Try (from inside the directory):")
+    typer.echo("  python experiments/exp_01_baseline.py")
 
 
 if __name__ == "__main__":
